@@ -22,34 +22,32 @@ for doc_num in range(1,51):
     content = open(file_name,"r",encoding = "utf-8", errors="ignore").read()
     content=content.lower()      #TO LOWER
 
-    punctuationRe = "[.,!?:;‘’”“\"]"
-    content = re.sub(punctuationRe, "", content)
-    content = re.sub("[-]", " ", content)
-
+    regex = re.compile('[^a-zA-Z0-9\s]')
+    content = re.sub(regex,' ',content)
+    regex = re.compile('[-]')
+    content = re.sub(regex,' ',content)
     tokens = nltk.word_tokenize(content)   
 
-    tokens_filtered= [word for word in tokens if not word in stopwords]  #REMOVE STOP WORDS
+    # tokens_filtered= [word for word in tokens if not word in stopwords]  #REMOVE STOP WORDS
     ps = PorterStemmer()
-    stemmed_tokens=[ps.stem(word) for word in tokens_filtered]
+    stemmed_tokens=[ps.stem(word) for word in tokens]
 
     word_position = 0
     tempdict={}
     for word in stemmed_tokens: 
-        if word not in Inverted_Index:
-            Inverted_Index[word]=[]
-        if word in Inverted_Index:
-            if Inverted_Index[word].count(doc_num)<=0:
-                Inverted_Index[word].append(doc_num)
-        if word in Positional_Index:
-            if doc_num in Positional_Index[word]:
-                Positional_Index[word][doc_num].append(word_position)
+        if word not in stopwords:
+            if word not in Inverted_Index:
+                Inverted_Index[word]=[]
+            if word in Inverted_Index:
+                if Inverted_Index[word].count(doc_num)<=0:
+                    Inverted_Index[word].append(doc_num)
+            if word in Positional_Index:
+                if doc_num in Positional_Index[word]:
+                    Positional_Index[word][doc_num].append(word_position)
+                else:
+                    Positional_Index[word][doc_num] = [word_position]
             else:
-                #Positional_Index[word].append({doc_num:word_position})
-                Positional_Index[word][doc_num] = [word_position]
-        else:
-            #Positional_Index[word] = []
-            Positional_Index[word] ={doc_num: [word_position]}
-            #Positional_Index[word].append({doc_num:word_position})
+                Positional_Index[word] ={doc_num: [word_position]}
         word_position=word_position + 1
 f = open("inverted.txt","w")
 f.write( str(Inverted_Index) )
@@ -63,10 +61,13 @@ def Boolean_Query(query):
     f_and=0
     f_or=0
     f_not=0
-    query=query.lower()    
-    punctuationRe = "[.,!?:;‘’”“\"]"
-    query = re.sub(punctuationRe, "", query)
-    query = re.sub("[-]", " ", query)
+    query=query.lower()  
+
+    regex = re.compile('[^a-zA-Z0-9\s]')
+    query = re.sub(regex,' ',query)
+    regex = re.compile('[-]')
+    query = re.sub(regex,' ',query)
+
 
     result = []
     p1=[]
@@ -128,9 +129,39 @@ def Boolean_Query(query):
                 f_or=0
     print(p1)
 
+def positional_query(query):
+    query=query.lower()    
+   
+    regex = re.compile('[^a-zA-Z0-9\s]')
+    query = re.sub(regex,' ',query)
+    regex = re.compile('[-]')
+    query = re.sub(regex,' ',query)
 
-# def positional_query(query):
+    result = []
+    p1=[]
+    p2=[]
+    query_list = nltk.word_tokenize(query)  
+    print(query_list)
+    for doc_num in range(1,51):  
+        word = query_list[0]
+        word2 = query_list[1]
+        word=ps.stem(word)
+        word2=ps.stem(word2)
+        if doc_num in Positional_Index[word] and doc_num in Positional_Index[word2]:
+            if word in Positional_Index:
+                p1=Positional_Index[word][doc_num]
+            if word2 in Positional_Index:
+                p2 = Positional_Index[word2][doc_num]
+            for i in p1:
+                for j in p2:
+                    if j-i == int(query_list[2])+1:
+                        result.append(doc_num)
+    print(result)
+s=0
 while(s != 4):
     query = input("Enter your query!")
-    Boolean_Query(query)
+    if query.find("/") != -1:
+        positional_query(query)
+    else:
+        Boolean_Query(query)
     s=input()

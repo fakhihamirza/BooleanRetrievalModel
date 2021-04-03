@@ -10,18 +10,14 @@ import json
 import sys
 from collections import defaultdict
 
-file_name = ['1.txt','2.txt','3.txt','4.txt','5.txt','6.txt','7.txt','8.txt','9.txt','10.txt','11.txt','12.txt','13.txt','14.txt','15.txt','16.txt','17.txt','18.txt','19.txt','20.txt','21.txt','22.txt','23.txt','24.txt','25.txt','26.txt','27.txt','28.txt','29.txt','30.txt','31.txt','32.txt','33.txt','34.txt','35.txt','36.txt','37.txt','38.txt','39.txt','40.txt','41.txt','42.txt','43.txt','44.txt','45.txt','46.txt','47.txt','48.txt','49.txt', '50.txt']
-filehandle=open('tokens.txt', 'w') 
 stopwords_file = open('Stopword-List.txt', errors="ignore").read()
 stopwords = nltk.word_tokenize(stopwords_file)
 
 stemmed_tokens=[]
 Inverted_Index = {}
 Positional_Index = {}
-posting_list=[]
-word_position_list={}
 
-for doc_num in range(1,5):
+for doc_num in range(1,51):
     file_name = str(doc_num) + ".txt"
     content = open(file_name,"r",encoding = "utf-8", errors="ignore").read()
     content=content.lower()      #TO LOWER
@@ -48,13 +44,13 @@ for doc_num in range(1,5):
             if doc_num in Positional_Index[word]:
                 Positional_Index[word][doc_num].append(word_position)
             else:
-                Positional_Index[word].append({doc_num:word_position})
+                #Positional_Index[word].append({doc_num:word_position})
+                Positional_Index[word][doc_num] = [word_position]
         else:
-            Positional_Index[word] = []
-            Positional_Index[word].append({doc_num:word_position})
+            #Positional_Index[word] = []
+            Positional_Index[word] ={doc_num: [word_position]}
+            #Positional_Index[word].append({doc_num:word_position})
         word_position=word_position + 1
-
-
 f = open("inverted.txt","w")
 f.write( str(Inverted_Index) )
 f.close()
@@ -62,3 +58,79 @@ f.close()
 f = open("positional.txt","w")
 f.write( str(Positional_Index) )
 f.close()
+
+def Boolean_Query(query):
+    f_and=0
+    f_or=0
+    f_not=0
+    query=query.lower()    
+    punctuationRe = "[.,!?:;‘’”“\"]"
+    query = re.sub(punctuationRe, "", query)
+    query = re.sub("[-]", " ", query)
+
+    result = []
+    p1=[]
+    p2=[]
+    p3=[]
+
+    query_list = nltk.word_tokenize(query)  
+    print(query_list)
+    i=0
+    for word in query_list:
+        if word =='and':
+            f_and = 1
+        elif word == 'or':
+            f_or = 1
+        elif word == 'not':
+            f_not = 1
+        else:
+            word=ps.stem(word)
+            if f_not:
+                if word in Inverted_Index:
+                    temp=[]
+                    temp2=[]
+                    temp = Inverted_Index.get(word)
+                    for i in range (1,51):
+                        if i not in temp:
+                            temp2.append(i)
+                    p1.append(temp2)
+                    if f_and:
+                        p1[0] = set(p1[0]).intersection(p1[1])
+                        p1.pop()
+                        f_and = 0
+                    if f_or:
+                        p1[0] = set(p1[0]).union(p1[1])
+                        p1.pop()
+                        f_or = 0
+                else:
+                    p1.append([])
+                f_not=0
+            elif not f_and and not f_or and not f_not:
+                if word in Inverted_Index:
+                    p1.append(Inverted_Index.get(word))
+                else:
+                    p1.append([])
+            elif f_and:
+                if word in Inverted_Index:
+                    p1.append(Inverted_Index.get(word))
+                else:
+                    p1.append([])
+                p1[0] = set(p1[0]).intersection(p1[1])
+                p1.pop()
+                f_and=0
+            elif f_or:
+                if word in Inverted_Index:
+                    p1.append(Inverted_Index.get(word))
+                else:
+                    p1.append([])
+                p1[0] = set(p1[0]).union(p1[1])
+                p1.pop()
+                f_or=0
+    print(p1)
+
+
+# def positional_query(query):
+while(s != 4):
+    query = input("Enter your query!")
+    Boolean_Query(query)
+    s=input()

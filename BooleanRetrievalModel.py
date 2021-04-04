@@ -3,77 +3,103 @@ import string
 import re
 from nltk.stem import PorterStemmer
 from nltk.tokenize import word_tokenize
-import glob
 import os
-import numpy as np
-import json
 import sys
-from collections import defaultdict
+import ast
 
 stopwords_file = open('Stopword-List.txt', errors="ignore").read()
 stopwords = nltk.word_tokenize(stopwords_file)
 
+
 stemmed_tokens=[]
 Inverted_Index = {}
 Positional_Index = {}
+ps = PorterStemmer()
 
-for doc_num in range(1,51):
-    file_name = str(doc_num) + ".txt"
-    content = open(file_name,"r",encoding = "utf-8", errors="ignore").read()
-    content=content.lower()      #TO LOWER
+def Pre_processing():
+    #for all documents in corpus-open file and read
+    # f= open("stemmed.txt", "w")
+    for doc_num in range(1,51):
+        file_name = str(doc_num) + ".txt"
+        content = open(file_name,"r",encoding = "utf-8", errors="ignore").read()
+        content=content.lower()      #TO LOWER
 
-    regex = re.compile('[^a-zA-Z0-9\s]')
-    content = re.sub(regex,' ',content)
-    regex = re.compile('[-]')
-    content = re.sub(regex,' ',content)
-    tokens = nltk.word_tokenize(content)   
+        #Remove punctuations and tokenize
+        regex = re.compile('[^a-zA-Z0-9\s]')
+        content = re.sub(regex,' ',content)
+        regex = re.compile('[-]')
+        content = re.sub(regex,' ',content)
+        tokens = nltk.word_tokenize(content)   
 
-    # tokens_filtered= [word for word in tokens if not word in stopwords]  #REMOVE STOP WORDS
-    ps = PorterStemmer()
-    stemmed_tokens=[ps.stem(word) for word in tokens]
+        #Stemming
+        stemmed_tokens=[ps.stem(word) for word in tokens]
 
-    word_position = 0
-    tempdict={}
-    for word in stemmed_tokens: 
-        if word not in stopwords:
-            if word not in Inverted_Index:
-                Inverted_Index[word]=[]
-            if word in Inverted_Index:
-                if Inverted_Index[word].count(doc_num)<=0:
-                    Inverted_Index[word].append(doc_num)
-            if word in Positional_Index:
-                if doc_num in Positional_Index[word]:
-                    Positional_Index[word][doc_num].append(word_position)
+        #Creating Positional and Inverted Indexes
+        word_position = 0
+        for word in stemmed_tokens: 
+            # f.write(word + '\n')
+            if word not in stopwords:
+                if word not in Inverted_Index:
+                    Inverted_Index[word]=[]
+                if word in Inverted_Index:
+                    if Inverted_Index[word].count(doc_num)<=0:
+                        Inverted_Index[word].append(doc_num)
+                if word in Positional_Index:
+                    if doc_num in Positional_Index[word]:
+                        Positional_Index[word][doc_num].append(word_position)
+                    else:
+                        Positional_Index[word][doc_num] = [word_position]
                 else:
-                    Positional_Index[word][doc_num] = [word_position]
-            else:
-                Positional_Index[word] ={doc_num: [word_position]}
-        word_position=word_position + 1
-f = open("inverted.txt","w")
-f.write( str(Inverted_Index) )
-f.close()
+                    Positional_Index[word] ={doc_num: [word_position]}
+            word_position=word_position + 1
+    # f.close()
 
-f = open("positional.txt","w")
-f.write( str(Positional_Index) )
-f.close()
+# Writing indexes to file //not needed anymore//
+def write_to_file():
+    f = open("inverted.txt","w")
+    f.write( str(Inverted_Index) )
+    f.close()
+
+    f = open("positional.txt","w")
+    f.write( str(Positional_Index) )
+    f.close()
+
+#to avoid multiple pre processing
+def read_from_file():
+    file = open("inverted.txt","r")
+    contents = file.read()
+    Inverted_Index = ast.literal_eval(contents)
+    file.close()
+    # print(type(Inverted_Index))
+    file = open("positional.txt","r")
+    contents = file.read()
+    Positional_Index=ast.literal_eval(contents)
+    print(type(Positional_Index))
+    file.close()
+    with open("stemmed.txt", 'r') as f:
+        stemmed_tokens = [line.rstrip('\n') for line in f]
+    for s in stemmed_tokens:
+        print(s)
+    f.close()
 
 def Boolean_Query(query):
     f_and=0
     f_or=0
     f_not=0
-    query=query.lower()  
 
+    #Preprocessing Query
+    query=query.lower() 
     regex = re.compile('[^a-zA-Z0-9\s]')
     query = re.sub(regex,' ',query)
     regex = re.compile('[-]')
     query = re.sub(regex,' ',query)
-
 
     result = []
     p1=[]
     p2=[]
     p3=[]
 
+    #Boolean Logic Implemented
     query_list = nltk.word_tokenize(query)  
     print(query_list)
     i=0
@@ -127,11 +153,12 @@ def Boolean_Query(query):
                 p1[0] = set(p1[0]).union(p1[1])
                 p1.pop()
                 f_or=0
-    print(p1)
+    result = p1[0]
+    return result
 
-def positional_query(query):
+def Proximity_Query(query):
+    #Pre processing Query
     query=query.lower()    
-   
     regex = re.compile('[^a-zA-Z0-9\s]')
     query = re.sub(regex,' ',query)
     regex = re.compile('[-]')
@@ -140,6 +167,8 @@ def positional_query(query):
     result = []
     p1=[]
     p2=[]
+    
+    #Proximity logic Implemented
     query_list = nltk.word_tokenize(query)  
     print(query_list)
     for doc_num in range(1,51):  
@@ -154,14 +183,25 @@ def positional_query(query):
                 p2 = Positional_Index[word2][doc_num]
             for i in p1:
                 for j in p2:
-                    if j-i == int(query_list[2])+1:
+                    if j-(int(query_list[2])+1) == j:
+                        print(doc_num)
                         result.append(doc_num)
-    print(result)
-s=0
-while(s != 4):
-    query = input("Enter your query!")
+                    if i+(int(query_list[2])+1) == j:
+                        print(doc_num)
+                        result.append(doc_num)
+    return(result)
+
+#Main
+def model (query):
+    #if no changes, can use prev made indexes hence
+    # read_from_file()
     if query.find("/") != -1:
-        positional_query(query)
+        Result = Proximity_Query(query)
     else:
-        Boolean_Query(query)
-    s=input()
+        Result = Boolean_Query(query)
+        Result = list(Result)
+    print(Result)
+    return Result
+
+def pre():
+    Pre_processing()

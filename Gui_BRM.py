@@ -12,9 +12,6 @@ def show():
     if len(tempList) >= 1:
         for i in range(1,len(tempList)+1):
             result_list.append([i, str(tempList[i-1]) + ".txt"])
-    
-    # result_list.append(["-","-"])
-
     for i, (num, name) in enumerate(result_list, start=1):
         listBox.insert("", "end", values=( num, name))
 def rs():
